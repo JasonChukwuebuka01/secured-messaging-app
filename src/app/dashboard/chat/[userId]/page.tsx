@@ -7,7 +7,8 @@ import { encryptMessage } from '@/lib/crypto/messages';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ChatPage() {
-    const { user, unwrappedKey, sendMessage, isConnected } = useAuth();
+    // Added lastMessage to destructuring
+    const { user, unwrappedKey, sendMessage, isConnected, lastMessage } = useAuth();
     const { userId } = useParams();
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -17,8 +18,29 @@ export default function ChatPage() {
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const topObserverRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null); // Ref for the scrollable container
+    const containerRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
+
+    /**
+     * REAL-TIME MESSAGE LISTENER
+     * This effect monitors the AuthContext for any incoming WebSocket data.
+     */
+    useEffect(() => {
+        if (lastMessage) {
+            // Verify the message belongs to this specific conversation
+            const isRelevant =
+                lastMessage.sender_id === userId ||
+                lastMessage.receiver_id === userId;
+
+            if (isRelevant) {
+                setMessages(prev => {
+                    // Prevent duplicates if the message was already added via handleSend
+                    if (prev.find(m => m.id === lastMessage.id)) return prev;
+                    return [...prev, lastMessage];
+                });
+            }
+        }
+    }, [lastMessage, userId]);
 
     // Fetch Messages with Pagination Support
     const fetchMessages = useCallback(async (before?: string) => {
@@ -30,8 +52,6 @@ export default function ChatPage() {
 
         try {
             if (before) setLoadingMore(true);
-
-            // Capture the scroll height before we add new messages to prevent jumping
             const previousHeight = containerRef.current?.scrollHeight || 0;
 
             const response = await fetch(url.toString(), {
@@ -40,7 +60,6 @@ export default function ChatPage() {
 
             if (response.ok) {
                 const data = await response.json();
-
                 if (data.length === 0) {
                     setHasMore(false);
                     return;
@@ -52,7 +71,6 @@ export default function ChatPage() {
                     const olderMessages = data.reverse();
                     setMessages(prev => [...olderMessages, ...prev]);
 
-                    // Adjust scroll position after the DOM updates to keep the view stable
                     setTimeout(() => {
                         if (containerRef.current) {
                             const newHeight = containerRef.current.scrollHeight;
@@ -89,14 +107,11 @@ export default function ChatPage() {
             { threshold: 0.5 }
         );
 
-        if (topObserverRef.current) {
-            observer.observe(topObserverRef.current);
-        }
-
+        if (topObserverRef.current) observer.observe(topObserverRef.current);
         return () => observer.disconnect();
     }, [messages, hasMore, loading, loadingMore, fetchMessages]);
 
-    // Auto-scroll logic for new messages
+    // Auto-scroll logic
     useEffect(() => {
         if (isFirstLoad.current && messages.length > 0) {
             scrollRef.current?.scrollIntoView({ behavior: 'auto' });
@@ -137,7 +152,7 @@ export default function ChatPage() {
                 sendMessage(userId as string, payload);
 
                 const optimisticMsg = {
-                    id: Date.now(),
+                    id: Date.now(), // Temporary ID for optimistic UI
                     sender_id: user.id,
                     receiver_id: userId,
                     payload: payload,
@@ -149,7 +164,6 @@ export default function ChatPage() {
             }
         } catch (err) {
             console.error("Send failed:", err);
-            alert("Failed to send secure message.");
         }
     };
 
