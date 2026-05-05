@@ -59,7 +59,7 @@ Metadata: While message content is encrypted, the server still knows who is talk
 
 ## Getting Started
 1. Clone the repository
-git clone [https://github.com/your-repo/whisperbox.git](https://github.com/your-repo/whisperbox.git)
+git clone https://github.com/JasonChukwuebuka01/secured-messaging-app
 
 2. Install dependencies
 
