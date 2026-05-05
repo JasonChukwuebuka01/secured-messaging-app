@@ -22,32 +22,47 @@ export default function ChatPage() {
 
     /**
      * REAL-TIME MESSAGE LISTENER
+     * Bridges the gap between the Socket in DashboardLayout and this Page
      */
     useEffect(() => {
-        if (lastMessage) {
-            // FIX: Extract the actual message object. 
-            // Handles both { event, data: {...} } and direct {...} formats.
-            const incoming = lastMessage.data || lastMessage;
+        const processIncoming = (incoming: any) => {
+            // Standardize the data format
+            const data = incoming.data || incoming;
 
             // Verify the message belongs to this specific conversation
-            const isRelevant =
-                incoming.sender_id === userId ||
-                incoming.receiver_id === userId;
+            const isRelevant = data.sender_id === userId || data.receiver_id === userId;
 
             if (isRelevant) {
                 setMessages(prev => {
-                    // Optimized Duplicate Check:
-                    // We check ID (for server messages) and payload (for optimistic matches)
+                    // Check for duplicates by ID or by Payload/Timestamp match
                     const isDuplicate = prev.some(m =>
-                        m.id === incoming.id ||
-                        (m.payload === incoming.payload && m.sender_id === incoming.sender_id)
+                        m.id === data.id ||
+                        (m.payload === data.payload && m.sender_id === data.sender_id)
                     );
 
                     if (isDuplicate) return prev;
-                    return [...prev, incoming];
+                    return [...prev, data];
                 });
             }
+        };
+
+        // Channel 1: Listen to AuthContext state updates
+        if (lastMessage) {
+            processIncoming(lastMessage);
         }
+
+        // Channel 2: Listen to the direct Window Event (Faster for real-time)
+        const handleCustomEvent = (event: any) => {
+            if (event.detail) {
+                processIncoming(event.detail);
+            }
+        };
+
+        window.addEventListener('new-whisper', handleCustomEvent);
+
+        return () => {
+            window.removeEventListener('new-whisper', handleCustomEvent);
+        };
     }, [lastMessage, userId]);
 
     // Fetch Messages with Pagination Support
@@ -225,8 +240,8 @@ export default function ChatPage() {
                     type="submit"
                     disabled={!isConnected || !newMessage.trim()}
                     className={`${isConnected && newMessage.trim()
-                            ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20'
-                            : 'bg-slate-700 cursor-not-allowed'
+                        ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20'
+                        : 'bg-slate-700 cursor-not-allowed'
                         } text-white px-6 py-2 rounded-xl font-bold transition-all active:scale-95 shadow-lg`}
                 >
                     {isConnected ? 'Send' : '...'}
