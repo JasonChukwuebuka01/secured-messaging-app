@@ -85,15 +85,16 @@ export default function LoginForm() {
             {/* TOAST NOTIFICATION */}
             {toast && (
                 <div className={`fixed top-10 right-4 lg:right-10 z-[100] px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 ${toast.type === 'success'
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                        : 'bg-red-500/10 border-red-500/20 text-red-400'
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/20 text-red-400'
                     }`}>
                     <span className="text-xl">{toast.type === 'success' ? '🛡️' : '⚠️'}</span>
                     <p className="text-sm font-bold">{toast.message}</p>
                 </div>
             )}
 
-            <div className="w-full max-w-md bg-[#1e293b]/50 backdrop-blur-xl border border-white/10 p-8 rounded-[28px] shadow-2xl">
+            <div className="w-full  max-w-md bg-[#1e293b]/50 backdrop-blur-xl border border-white/10 p-8 rounded-[28px] shadow-2xl">
+
                 <header className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-white tracking-tight">Log In</h1>
                     <p className="text-slate-400 mt-2 text-sm">WhisperBox Secure Access</p>

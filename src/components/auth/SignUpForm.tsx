@@ -95,7 +95,7 @@ export default function SignUpForm() {
 
     
     return (
-        <div className=" flex-col items-center  bg-[#0f172a] px-4 relative overflow-hidden">
+        <div className=" flex-col items-center  bg-[#0f172a]  relative overflow-hidden">
 
             {/* SUCCESS TOAST */}
             {showSuccess && (
@@ -104,16 +104,13 @@ export default function SignUpForm() {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className="font-semibold tracking-wide">Account forged successfully!</span>
+                        <span className="font-semibold tracking-wide">Account created successfully!</span>
                     </div>
                 </div>
             )}
 
-            <div className="w-full max-w-md bg-[#1e293b]/50 backdrop-blur-xl border border-white/10 p-8 rounded-[28px] shadow-2xl relative z-10">
-                <header className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Register</h1>
-                </header>
-
+            <div className="w-full max-w-md bg-[#1e293b]/50  backdrop-blur-xl border border-white/10 p-8 rounded-[28px] shadow-2xl relative z-10">
+               
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
                         <label htmlFor="username" className="block text-sm font-medium text-slate-300">Username</label>
