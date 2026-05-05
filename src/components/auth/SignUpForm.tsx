@@ -95,7 +95,7 @@ export default function SignUpForm() {
 
     
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f172a] px-4 relative overflow-hidden">
+        <div className=" flex-col items-center  bg-[#0f172a] px-4 relative overflow-hidden">
 
             {/* SUCCESS TOAST */}
             {showSuccess && (
