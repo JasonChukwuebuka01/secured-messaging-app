@@ -51,7 +51,7 @@ export default function SignUpForm() {
                 pbkdf2_salt: btoa(String.fromCharCode(...new Uint8Array(salt)))
             };
 
-            // 3. API Call
+            // API Call
             const response = await fetch('https://whisperbox.koyeb.app/auth/register', {
                 method: 'POST',
                 headers: {
@@ -149,7 +149,7 @@ export default function SignUpForm() {
                                 : 'bg-[#2481cc] hover:bg-[#288fde] text-white disabled:opacity-50'
                             }`}
                     >
-                        {loading ? 'Processing...' : showSuccess ? 'Success!' : 'Forge Account'}
+                        {loading ? 'Processing...' : showSuccess ? 'Success!' : 'Create Account'}
                     </button>
                 </form>
             </div>
