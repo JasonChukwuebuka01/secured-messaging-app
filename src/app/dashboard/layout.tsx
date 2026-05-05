@@ -15,16 +15,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [accessToken, setAccessToken] = useState<string | null>(null);
 
-    //  Handle incoming real-time messages
+    // --- FIX: Define the state that AuthProvider requires ---
+    const [lastMessage, setLastMessage] = useState<any>(null);
+
+    // Handle incoming real-time messages
     const handleIncomingMessage = useCallback((data: any) => {
         console.log("New Message arrived via Socket:", data);
-        // We dispatch a custom event so specific chat pages can listen for it
+
+        // Update the state so the ChatPage receives it via Context
+        setLastMessage(data);
+
+        // Keep your existing custom event if other parts of the app use it
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('new-whisper', { detail: data }));
         }
     }, []);
 
-    //  Initialize the WebSocket hook
+    // Initialize the WebSocket hook
     const { isConnected, sendMessage } = useSocket(accessToken, handleIncomingMessage);
 
     useEffect(() => {
@@ -69,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 const userData = await response.json();
                 setUser(userData);
-                setAccessToken(token); // Setting this triggers the WebSocket connection
+                setAccessToken(token);
 
                 // Re-materialize the Wrapping Key and unwrap Private Key
                 if (storedWrappingKey && userData.wrapped_private_key) {
@@ -114,7 +121,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     },
                     body: JSON.stringify({ refresh_token: refreshToken })
                 });
-                console.log("✅ Server session revoked.");
             }
         } catch (err) {
             console.error("Failed to notify server of logout:", err);
@@ -126,6 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             setAccessToken(null);
             setUser(null);
             setUnwrappedKey(null);
+            setLastMessage(null); // Clear message state on logout
 
             router.push('/login');
         }
@@ -166,13 +173,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     ))}
                 </nav>
 
-                {/* --- ADDED DEVELOPER SIGNATURE --- */}
                 <div className="px-8 py-4">
                     <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
                         Dev.by <span className="text-blue-400/80 font-bold">Jason Mayicodes</span>
                     </p>
                 </div>
-                {/* --------------------------------- */}
 
                 <div className="p-6 border-t border-white/5">
                     <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-4 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all">
@@ -186,7 +191,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <header className="h-16 lg:h-20 border-b border-white/5 flex items-center justify-between px-4 lg:px-10 bg-[#0f172a]/80 backdrop-blur-xl z-30">
                     <button className="lg:hidden p-2 text-white bg-white/5 rounded-lg" onClick={() => setIsSidebarOpen(true)}>☰</button>
 
-                    {/* Status Indicators */}
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
                             <div className={`h-2 w-2 rounded-full ${unwrappedKey ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-yellow-500'}`}></div>
@@ -211,7 +215,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </header>
 
                 <section className="flex-1 p-4 lg:p-10 overflow-y-auto">
-                    <AuthProvider value={{ user, unwrappedKey, sendMessage, isConnected }}>
+                    {/* All required properties are now passed here */}
+                    <AuthProvider value={{ user, unwrappedKey, sendMessage, isConnected, lastMessage }}>
                         {children}
                     </AuthProvider>
                 </section>
