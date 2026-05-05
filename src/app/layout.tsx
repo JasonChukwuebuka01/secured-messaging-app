@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'WhisperBox',
-  description: 'Secure, End-to-End Encrypted Messaging',
+  description: 'Secure, End-to-End Encrypted Messaging app',
 };
 
 export default function RootLayout({
