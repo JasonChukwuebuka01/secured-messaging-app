@@ -10,21 +10,33 @@ interface MessageProps {
 }
 
 export default function MessageBubble({ message, currentUserId, privateKey }: MessageProps) {
-
     const [decryptedText, setDecryptedText] = useState<string>('Decrypting...');
-    const isMe = message.from_user_id === currentUserId;
+
+    // CHANGE 1: Standardized the sender check to support both API (sender_id) 
+    // and your optimistic UI update (sender_id).
+    const isMe = (message.sender_id === currentUserId) || (message.from_user_id === currentUserId);
 
     useEffect(() => {
         const unlock = async () => {
+            // Safety check for required cryptographic components
+            if (!message.payload?.ciphertext || !message.payload?.iv) {
+                setDecryptedText("⚠️ Error: Malformed message payload.");
+                return;
+            }
+
             try {
-                //  Identify which "Padlock" to open
-                // If I sent it, use 'encryptedKeyForSelf'. If I received it, use 'encryptedKey'.
-                const encryptedKeyToUse = isMe 
-                    ? message.payload.encryptedKeyForSelf 
+                //  Enforced strict envelope selection.
+                // 'encryptedKeyForSelf' is the copy locked with your own public key.
+                // 'encryptedKey' is the copy locked with the recipient's public key.
+                const encryptedKeyToUse = isMe
+                    ? message.payload.encryptedKeyForSelf
                     : message.payload.encryptedKey;
 
-                //  The "Unwrapping"
-                // This calls the Web Crypto API to use your Private Key to unlock the AES key
+                if (!encryptedKeyToUse) {
+                    throw new Error("No valid key envelope found for this user.");
+                }
+
+                // The "Unwrapping" logic
                 const clearText = await decryptMessage(
                     message.payload.ciphertext,
                     message.payload.iv,
@@ -35,7 +47,8 @@ export default function MessageBubble({ message, currentUserId, privateKey }: Me
                 setDecryptedText(clearText);
             } catch (err) {
                 console.error("Decryption failed:", err);
-                setDecryptedText("⚠️ Error: Could not decrypt message.");
+                // Providing more context for the "OperationError"
+                setDecryptedText("⚠️ Error: Decryption failed (Key mismatch).");
             }
         };
 
@@ -43,16 +56,15 @@ export default function MessageBubble({ message, currentUserId, privateKey }: Me
     }, [message, privateKey, isMe]);
 
     return (
-        <li 
+        <li
             className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-4`}
             aria-label={`Message from ${isMe ? 'you' : 'contact'}`}
         >
-            <article 
-                className={`max-w-[80%] px-5 py-3 rounded-[24px] text-sm shadow-sm ${
-                    isMe 
-                    ? 'bg-blue-600 text-white rounded-br-none' 
-                    : 'bg-[#1e293b] text-slate-200 border border-white/5 rounded-bl-none'
-                }`}
+            <article
+                className={`max-w-[80%] px-5 py-3 rounded-[24px] text-sm shadow-sm ${isMe
+                        ? 'bg-blue-600 text-white rounded-br-none'
+                        : 'bg-[#1e293b] text-slate-200 border border-white/5 rounded-bl-none'
+                    }`}
             >
                 <p className="leading-relaxed whitespace-pre-wrap">{decryptedText}</p>
                 <time className="block text-[10px] mt-2 opacity-50 font-mono text-right">

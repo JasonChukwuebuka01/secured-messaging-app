@@ -46,7 +46,7 @@ export async function deriveWrappingKey(password: string, salt: Uint8Array): Pro
         } as Pbkdf2Params,
         baseKey,
         { name: "AES-KW", length: 256 },
-        false,
+        true,
         ["wrapKey", "unwrapKey"]
     );
 }
