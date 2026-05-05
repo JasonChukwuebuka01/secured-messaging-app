@@ -15,9 +15,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [accessToken, setAccessToken] = useState<string | null>(null);
 
-
-
-
     //  Handle incoming real-time messages
     const handleIncomingMessage = useCallback((data: any) => {
         console.log("New Message arrived via Socket:", data);
@@ -29,9 +26,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     //  Initialize the WebSocket hook
     const { isConnected, sendMessage } = useSocket(accessToken, handleIncomingMessage);
-
-
-
 
     useEffect(() => {
         const restoreSession = async () => {
@@ -105,16 +99,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         restoreSession();
     }, [router]);
 
-
-
-
     const handleLogout = async () => {
-        //. Get the tokens before clearing them
         const token = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
 
         try {
-            //. Notify the server (Official Revocation)
             if (token && refreshToken) {
                 await fetch('https://whisperbox.koyeb.app/auth/logout', {
                     method: 'POST',
@@ -128,15 +117,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 console.log("✅ Server session revoked.");
             }
         } catch (err) {
-            // We log the error but continue clearing local data anyway
             console.error("Failed to notify server of logout:", err);
         } finally {
-            //  Clear all local sensitive data (Immediate Client Logout)
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             sessionStorage.removeItem('temp_wrapping_key');
 
-            //. Update state and redirect
             setAccessToken(null);
             setUser(null);
             setUnwrappedKey(null);
@@ -145,8 +131,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
     };
 
-
-    
     if (loading) return (
         <div className="h-screen bg-[#0f172a] flex flex-col items-center justify-center gap-4">
             <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
@@ -155,9 +139,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
 
     const navItems = [
-        { id: 'messages', label: 'Messages', icon: '💬', href: '/dashboard' },
-        { id: 'vault', label: 'My Vault', icon: '🔒', href: '/dashboard/vault' },
-        { id: 'settings', label: 'Settings', icon: '⚙️', href: '/dashboard/settings' }
+        { id: 'messages', label: 'Messages', icon: '💬', href: '/dashboard' }
     ];
 
     return (
@@ -183,6 +165,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </button>
                     ))}
                 </nav>
+
+                {/* --- ADDED DEVELOPER SIGNATURE --- */}
+                <div className="px-8 py-4">
+                    <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
+                        Dev.by <span className="text-blue-400/80 font-bold">Jason Mayicodes</span>
+                    </p>
+                </div>
+                {/* --------------------------------- */}
+
                 <div className="p-6 border-t border-white/5">
                     <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-4 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all">
                         <span>🚪</span> <span className="font-bold text-sm">Logout</span>
@@ -195,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <header className="h-16 lg:h-20 border-b border-white/5 flex items-center justify-between px-4 lg:px-10 bg-[#0f172a]/80 backdrop-blur-xl z-30">
                     <button className="lg:hidden p-2 text-white bg-white/5 rounded-lg" onClick={() => setIsSidebarOpen(true)}>☰</button>
 
-                    {/* Updated Status Indicators */}
+                    {/* Status Indicators */}
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
                             <div className={`h-2 w-2 rounded-full ${unwrappedKey ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-yellow-500'}`}></div>
@@ -220,7 +211,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </header>
 
                 <section className="flex-1 p-4 lg:p-10 overflow-y-auto">
-                    {/* Passing both Key and Socket functions into the context */}
                     <AuthProvider value={{ user, unwrappedKey, sendMessage, isConnected }}>
                         {children}
                     </AuthProvider>

@@ -112,7 +112,7 @@ export default function LoginForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-300 ml-1">Master Password</label>
+                        <label className="block text-sm font-medium text-slate-300 ml-1"> Password</label>
                         <input
                             name="password"
                             type="password"
@@ -134,7 +134,7 @@ export default function LoginForm() {
                         className={`w-full font-bold py-4 rounded-xl transition-all mt-4 flex justify-center items-center gap-2 ${showSuccess ? 'bg-[#10b981]' : 'bg-[#2481cc] hover:bg-[#288fde]'
                             } text-white disabled:opacity-50`}
                     >
-                        {loading ? 'Decrypting...' : showSuccess ? 'Vault Unlocked' : 'Unlock Vault'}
+                        {loading ? 'Logging in...' : showSuccess ? 'Vault Unlocked' : 'Unlock Vault'}
                     </button>
                 </form>
 

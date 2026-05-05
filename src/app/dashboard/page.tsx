@@ -193,7 +193,7 @@ export default function MessagesPage({ user, unwrappedKey }: { user: any, unwrap
                     <div className="p-8 bg-white/5 rounded-[32px] border border-white/5">
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Security Protocol</h4>
                         <p className="text-xs text-slate-400 leading-relaxed italic">
-                            "Messages are encrypted locally using RSA-2048 OAEP before hitting the wire."
+                            "Messages are encrypted locally using RSA-2048 OAEP.So only you and your intended recipient can read them. Even our servers can't decrypt your conversation. And God. happy secrecy!"
                         </p>
                     </div>
                 </aside>
