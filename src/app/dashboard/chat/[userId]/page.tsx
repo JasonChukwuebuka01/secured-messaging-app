@@ -11,7 +11,7 @@ export default function ChatPage({ user, unwrappedKey }: { user: any, unwrappedK
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // 1. Fetch the "Locked" Messages from the Server
+    // Fetch the "Locked" Messages from the Server
     useEffect(() => {
         const fetchMessages = async () => {
             const token = localStorage.getItem('access_token');
@@ -66,7 +66,7 @@ export default function ChatPage({ user, unwrappedKey }: { user: any, unwrappedK
 
 
 
-    
+
     return (
         <div className="flex flex-col h-[calc(100vh-180px)]">
             {/* Message List Area */}

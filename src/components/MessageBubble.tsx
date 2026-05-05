@@ -23,7 +23,7 @@ export default function MessageBubble({ message, currentUserId, privateKey }: Me
                     ? message.payload.encryptedKeyForSelf 
                     : message.payload.encryptedKey;
 
-                // 2. The "Unwrapping"
+                //  The "Unwrapping"
                 // This calls the Web Crypto API to use your Private Key to unlock the AES key
                 const clearText = await decryptMessage(
                     message.payload.ciphertext,
