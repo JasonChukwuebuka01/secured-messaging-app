@@ -51,13 +51,7 @@ export async function deriveWrappingKey(password: string, salt: Uint8Array): Pro
     );
 }
 
-/**
- * 4. WRAP PRIVATE KEY
- * Encrypts the private key using AES-KW before sending to the server.
- */
-/**
- * Helper to add PKCS#7-style padding for AES-KW (8-byte alignment)
- */
+
 /**
  * Helper to add PKCS#7-style padding for AES-KW (8-byte alignment)
  */
@@ -71,23 +65,7 @@ function pad(data: Uint8Array): Uint8Array {
     return padded;
 }
 
-/**
- * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
- * We export to pkcs8, pad to 8-byte alignment, then wrap.
- */
-/**
- * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
- * Fix: Use 'encrypt' to handle long data (RSA Key) with AES-KW.
- */
-/**
- * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
- * Fix: The "Fake Key" maneuver to bypass browser restrictions.
- */
-/**
- * 4. WRAP PRIVATE KEY
- * We use AES-GCM here. It handles the RSA key length automatically
- * and provides high-fidelity encryption for your 2048-bit key.
- */
+
 /**
  * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
  * Fixed to satisfy both Browser and Backend requirements.

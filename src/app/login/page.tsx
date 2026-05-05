@@ -37,7 +37,7 @@ export default function LoginForm() {
                 throw new Error(result.detail || 'Invalid credentials.');
             }
 
-            const { access_token, user } = result;
+            const { access_token, user, refresh_token } = result;
             const { wrapped_private_key, pbkdf2_salt } = user;
 
             // 2. CONVERT DATA
@@ -56,6 +56,8 @@ export default function LoginForm() {
 
             // 4. SAVE & NAVIGATE
             localStorage.setItem('access_token', access_token);
+            localStorage.setItem('refresh_token', refresh_token);
+            
             await saveVault(wrappedBytes.buffer as ArrayBuffer, saltBytes);
 
             // Temporarily hold this in memory for the Dashboard to pick up
