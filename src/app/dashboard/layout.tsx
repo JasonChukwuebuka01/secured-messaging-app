@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { unwrapPrivateKey } from '@/lib/crypto/keys';
 import { AuthProvider } from '@/context/AuthContext';
-import { useSocket } from '@/hooks/useSocket'; 
+import { useSocket } from '@/hooks/useSocket';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 
 
-    
+
     //  Handle incoming real-time messages
     const handleIncomingMessage = useCallback((data: any) => {
         console.log("New Message arrived via Socket:", data);
@@ -105,14 +105,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         restoreSession();
     }, [router]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        sessionStorage.removeItem('temp_wrapping_key');
-        setAccessToken(null);
-        router.push('/login');
+
+
+
+    const handleLogout = async () => {
+        //. Get the tokens before clearing them
+        const token = localStorage.getItem('access_token');
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        try {
+            //. Notify the server (Official Revocation)
+            if (token && refreshToken) {
+                await fetch('https://whisperbox.koyeb.app/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refresh_token: refreshToken })
+                });
+                console.log("✅ Server session revoked.");
+            }
+        } catch (err) {
+            // We log the error but continue clearing local data anyway
+            console.error("Failed to notify server of logout:", err);
+        } finally {
+            //  Clear all local sensitive data (Immediate Client Logout)
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            sessionStorage.removeItem('temp_wrapping_key');
+
+            //. Update state and redirect
+            setAccessToken(null);
+            setUser(null);
+            setUnwrappedKey(null);
+
+            router.push('/login');
+        }
     };
 
+
+    
     if (loading) return (
         <div className="h-screen bg-[#0f172a] flex flex-col items-center justify-center gap-4">
             <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
