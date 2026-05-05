@@ -21,17 +21,20 @@ export async function initVault() {
  * SAVE_PRIVATE_KEY
  * Bolting the physical key into the floor of the browser.
  */
-export async function savePrivateKey(key: CryptoKey) {
+export async function saveVault(wrappedKey: ArrayBuffer, salt: Uint8Array) {
     const db = await initVault();
-    // We store it under the name 'user-private-key'
-    await db.put(STORE_NAME, key, 'user-private-key');
+    // Save the wrapped key and salt separately so we can retrieve them at login
+    await db.put(STORE_NAME, wrappedKey, 'wrapped-private-key');
+    await db.put(STORE_NAME, salt, 'registration-salt');
 }
 
 /**
  * GET_PRIVATE_KEY
  * Reaching into the safe to grab the key when we need to unlock a message.
  */
-export async function getPrivateKey(): Promise<CryptoKey | undefined> {
+export async function getVaultData() {
     const db = await initVault();
-    return db.get(STORE_NAME, 'user-private-key');
+    const wrappedKey = await db.get(STORE_NAME, 'wrapped-private-key');
+    const salt = await db.get(STORE_NAME, 'registration-salt');
+    return { wrappedKey, salt };
 }

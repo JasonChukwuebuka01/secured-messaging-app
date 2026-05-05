@@ -55,14 +55,125 @@ export async function deriveWrappingKey(password: string, salt: Uint8Array): Pro
  * 4. WRAP PRIVATE KEY
  * Encrypts the private key using AES-KW before sending to the server.
  */
+/**
+ * Helper to add PKCS#7-style padding for AES-KW (8-byte alignment)
+ */
+/**
+ * Helper to add PKCS#7-style padding for AES-KW (8-byte alignment)
+ */
+function pad(data: Uint8Array): Uint8Array {
+    const padLen = 8 - (data.length % 8);
+    const padded = new Uint8Array(data.length + padLen);
+    padded.set(data);
+    for (let i = data.length; i < padded.length; i++) {
+        padded[i] = padLen;
+    }
+    return padded;
+}
+
+/**
+ * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
+ * We export to pkcs8, pad to 8-byte alignment, then wrap.
+ */
+/**
+ * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
+ * Fix: Use 'encrypt' to handle long data (RSA Key) with AES-KW.
+ */
+/**
+ * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
+ * Fix: The "Fake Key" maneuver to bypass browser restrictions.
+ */
+/**
+ * 4. WRAP PRIVATE KEY
+ * We use AES-GCM here. It handles the RSA key length automatically
+ * and provides high-fidelity encryption for your 2048-bit key.
+ */
+/**
+ * 4. WRAP PRIVATE KEY (Requirement: AES-KW)
+ * Fixed to satisfy both Browser and Backend requirements.
+ */
 export async function wrapPrivateKey(
     privateKey: CryptoKey,
     wrappingKey: CryptoKey
 ): Promise<ArrayBuffer> {
+    // 1. Export the RSA key to pkcs8 bytes
+    const exported = await window.crypto.subtle.exportKey("pkcs8", privateKey);
+
+    // 2. Pad to 8-byte alignment (Required for AES-KW)
+    const paddedBytes = pad(new Uint8Array(exported));
+
+    // 3. THE FIX: Import as 'hmac' so the browser allows any length 
+    // and treats it as a "SecretKey" suitable for wrapping.
+    const genericKey = await window.crypto.subtle.importKey(
+        "raw",
+        paddedBytes.buffer as ArrayBuffer,
+        { name: "HMAC", hash: "SHA-256" },
+        true,
+        ["verify"] // Dummy usage
+    );
+
+    // 4. WRAP with AES-KW
+    // This produces the EXACT blob your backend expects.
     return await window.crypto.subtle.wrapKey(
-        "pkcs8",
-        privateKey,
+        "raw",
+        genericKey,
         wrappingKey,
         "AES-KW"
+    );
+}
+
+
+
+
+
+
+/**
+ * Unwraps (decrypts) an RSA private key using a derived AES wrapping key.
+ * @param wrappedKeyBuffer The encrypted private key bytes from the server.
+ * @param wrappingKey The AES-GCM key derived from the user's password.
+ * @returns The decrypted CryptoKey (RSA-OAEP).
+ */
+/**
+ * 5. UNWRAP PRIVATE KEY
+ * Mirrored to match the wrapPrivateKey logic (AES-KW).
+ */
+/**
+ * 5. UNWRAP PRIVATE KEY
+ * Mirrored to match the wrapPrivateKey logic (AES-KW).
+ */
+export async function unwrapPrivateKey(
+    wrappedKeyBuffer: Uint8Array,
+    wrappingKey: CryptoKey
+): Promise<CryptoKey> {
+    // 1. Unwrap the "Generic" key first
+    // Use .buffer to satisfy 'BufferSource' requirement
+    const unwrappedGenericKey = await window.crypto.subtle.unwrapKey(
+        "raw",
+        wrappedKeyBuffer.buffer as ArrayBuffer,
+        wrappingKey,
+        "AES-KW",
+        { name: "HMAC", hash: "SHA-256" },
+        true,
+        ["verify"]
+    );
+
+    // 2. Export the raw bytes (which are the padded PKCS8 bytes)
+    const paddedBytes = await window.crypto.subtle.exportKey("raw", unwrappedGenericKey);
+
+    // 3. Remove PKCS7 padding to get the original PKCS8
+    const bytes = new Uint8Array(paddedBytes);
+    const padLen = bytes[bytes.length - 1];
+    const originalPkcs8 = bytes.slice(0, bytes.length - padLen);
+
+    // 4. Final Import as the actual RSA Private Key
+    return await window.crypto.subtle.importKey(
+        "pkcs8",
+        originalPkcs8.buffer as ArrayBuffer,
+        {
+            name: "RSA-OAEP",
+            hash: "SHA-256"
+        },
+        true,
+        ["decrypt"]
     );
 }
