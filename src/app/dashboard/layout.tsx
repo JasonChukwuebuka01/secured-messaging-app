@@ -14,7 +14,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         const restoreSession = async () => {
-            const token = localStorage.getItem('access_token');
+            let token = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
             const wrappingKey = (window as any).tempWrappingKey;
 
             if (!token) {
@@ -23,12 +24,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }
 
             try {
-                const response = await fetch('https://whisperbox.koyeb.app/auth/me', {
+                // 1. Initial attempt to fetch profile
+                let response = await fetch('https://whisperbox.koyeb.app/auth/me', {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
                 });
 
-                if (!response.ok) throw new Error('Expired');
+                // 2. --- NEW REFRESH LOGIC ADDED HERE ---
+                if (response.status === 401 && refreshToken) {
+                    const refreshResponse = await fetch('https://whisperbox.koyeb.app/auth/refresh', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refresh_token: refreshToken })
+                    });
+
+                    if (refreshResponse.ok) {
+                        const refreshData = await refreshResponse.json();
+                        token = refreshData.access_token;
+                        localStorage.setItem('access_token', token as string);
+
+                        // Retry the profile fetch with the new token
+                        response = await fetch('https://whisperbox.koyeb.app/auth/me', {
+                            method: 'GET',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+                        });
+                    }
+                }
+
+                if (!response.ok) throw new Error('Session invalid');
 
                 const userData = await response.json();
                 setUser(userData);
@@ -40,28 +63,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     setUnwrappedKey(rsaKey);
                 }
             } catch (err) {
+                console.error("Auth restoration failed:", err);
                 localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
                 router.push('/login');
             } finally {
                 setLoading(false);
             }
         };
+
+        
         restoreSession();
     }, [router]);
 
-
-
-
     const handleLogout = () => {
         localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         (window as any).tempWrappingKey = null;
         router.push('/login');
     };
-
-
-
-
-
 
     if (loading) return (
         <div className="h-screen bg-[#0f172a] flex flex-col items-center justify-center gap-4">
@@ -69,10 +89,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <p className="text-slate-400 text-sm animate-pulse font-medium">Initializing Vault...</p>
         </div>
     );
-
-
-
-
 
     const navItems = [
         { id: 'messages', label: 'Messages', icon: '💬', href: '/dashboard' },
@@ -130,6 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </header>
                 <section className="flex-1 p-4 lg:p-10 overflow-y-auto">
                     {/* The specific page content (Messages, Vault, etc.) goes here */}
+                    {/* We use React.cloneElement to pass down user and unwrappedKey props to the children */}
                     {children}
                 </section>
             </main>
