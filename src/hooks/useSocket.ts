@@ -7,13 +7,14 @@ export const useSocket = (token: string | null, onMessageReceived: (msg: any) =>
     const [isConnected, setIsConnected] = useState(false);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    const connect = useCallback(() => {
-        if (!token) return;
+    // FIX 1: Store the callback in a ref so the socket logic never needs to change
+    const onMessageRef = useRef(onMessageReceived);
+    useEffect(() => {
+        onMessageRef.current = onMessageReceived;
+    }, [onMessageReceived]);
 
-        // Clean up existing socket before creating a new one
-        if (socketRef.current) {
-            socketRef.current.close();
-        }
+    const connect = useCallback(() => {
+        if (!token || socketRef.current?.readyState === WebSocket.OPEN) return;
 
         const ws = new WebSocket(`wss://whisperbox.koyeb.app/ws?token=${token}`);
         socketRef.current = ws;
@@ -21,19 +22,15 @@ export const useSocket = (token: string | null, onMessageReceived: (msg: any) =>
         ws.onopen = () => {
             console.log("✅ WebSocket Connected");
             setIsConnected(true);
-            // Clear any pending reconnection attempts
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
-                reconnectTimeoutRef.current = null;
-            }
         };
 
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                // Listen for 'message.receive' per your task guidelines
-                if (data.event === 'message.receive') {
-                    onMessageReceived(data);
+                // FIX 2: Broaden the check. Some backends send the message object directly
+                // or use different event keys.
+                if (data.event === 'message.receive' || data.payload || data.sender_id) {
+                    onMessageRef.current(data);
                 }
             } catch (err) {
                 console.error("Failed to parse socket message", err);
@@ -41,34 +38,23 @@ export const useSocket = (token: string | null, onMessageReceived: (msg: any) =>
         };
 
         ws.onclose = (event) => {
-            console.log("❌ WebSocket Disconnected. Code:", event.code);
             setIsConnected(false);
-
-            // Reconnect logic: Wait 3 seconds before trying again if not closed intentionally
             if (event.code !== 1000 && token) {
-                console.log("🔄 Attempting to reconnect in 3s...");
-                reconnectTimeoutRef.current = setTimeout(() => {
-                    connect();
-                }, 3000);
+                reconnectTimeoutRef.current = setTimeout(() => connect(), 3000);
             }
         };
 
-        ws.onerror = (error) => {
-            console.error("WebSocket Error:", error);
-            ws.close();
-        };
-    }, [token, onMessageReceived]);
+        ws.onerror = () => ws.close();
+    }, [token]); // Removed onMessageReceived from dependencies to prevent restart loops
 
-    // Initialize connection
     useEffect(() => {
         connect();
         return () => {
-            if (socketRef.current) socketRef.current.close(1000); // Normal closure
+            if (socketRef.current) socketRef.current.close(1000);
             if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
         };
     }, [connect]);
 
-    // Using useCallback so we can call this from the UI
     const sendMessage = useCallback((to: string, payload: any) => {
         if (socketRef.current?.readyState === WebSocket.OPEN) {
             socketRef.current.send(JSON.stringify({
@@ -76,8 +62,6 @@ export const useSocket = (token: string | null, onMessageReceived: (msg: any) =>
                 to,
                 payload
             }));
-        } else {
-            console.error("WebSocket is not open. State:", socketRef.current?.readyState);
         }
     }, []);
 

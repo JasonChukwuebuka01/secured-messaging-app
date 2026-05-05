@@ -7,7 +7,6 @@ import { encryptMessage } from '@/lib/crypto/messages';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ChatPage() {
-    // Added lastMessage to destructuring
     const { user, unwrappedKey, sendMessage, isConnected, lastMessage } = useAuth();
     const { userId } = useParams();
     const [messages, setMessages] = useState<any[]>([]);
@@ -23,20 +22,29 @@ export default function ChatPage() {
 
     /**
      * REAL-TIME MESSAGE LISTENER
-     * This effect monitors the AuthContext for any incoming WebSocket data.
      */
     useEffect(() => {
         if (lastMessage) {
+            // FIX: Extract the actual message object. 
+            // Handles both { event, data: {...} } and direct {...} formats.
+            const incoming = lastMessage.data || lastMessage;
+
             // Verify the message belongs to this specific conversation
             const isRelevant =
-                lastMessage.sender_id === userId ||
-                lastMessage.receiver_id === userId;
+                incoming.sender_id === userId ||
+                incoming.receiver_id === userId;
 
             if (isRelevant) {
                 setMessages(prev => {
-                    // Prevent duplicates if the message was already added via handleSend
-                    if (prev.find(m => m.id === lastMessage.id)) return prev;
-                    return [...prev, lastMessage];
+                    // Optimized Duplicate Check:
+                    // We check ID (for server messages) and payload (for optimistic matches)
+                    const isDuplicate = prev.some(m =>
+                        m.id === incoming.id ||
+                        (m.payload === incoming.payload && m.sender_id === incoming.sender_id)
+                    );
+
+                    if (isDuplicate) return prev;
+                    return [...prev, incoming];
                 });
             }
         }
@@ -65,12 +73,14 @@ export default function ChatPage() {
                     return;
                 }
 
-                if (!before) {
-                    setMessages(data.reverse());
-                } else {
-                    const olderMessages = data.reverse();
-                    setMessages(prev => [...olderMessages, ...prev]);
+                const cleanedData = data.reverse();
 
+                if (!before) {
+                    setMessages(cleanedData);
+                } else {
+                    setMessages(prev => [...cleanedData, ...prev]);
+
+                    // Preserve scroll position when loading older messages
                     setTimeout(() => {
                         if (containerRef.current) {
                             const newHeight = containerRef.current.scrollHeight;
@@ -95,13 +105,12 @@ export default function ChatPage() {
         fetchMessages();
     }, [userId, fetchMessages]);
 
-    // Intersection Observer for Infinite Scroll
+    // Infinite Scroll Observer
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !loading && !loadingMore && messages.length > 0) {
-                    const oldestMessageTimestamp = messages[0].created_at;
-                    fetchMessages(oldestMessageTimestamp);
+                    fetchMessages(messages[0].created_at);
                 }
             },
             { threshold: 0.5 }
@@ -113,11 +122,13 @@ export default function ChatPage() {
 
     // Auto-scroll logic
     useEffect(() => {
-        if (isFirstLoad.current && messages.length > 0) {
-            scrollRef.current?.scrollIntoView({ behavior: 'auto' });
-            isFirstLoad.current = false;
-        } else if (!loadingMore) {
-            scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messages.length > 0) {
+            if (isFirstLoad.current) {
+                scrollRef.current?.scrollIntoView({ behavior: 'auto' });
+                isFirstLoad.current = false;
+            } else if (!loadingMore) {
+                scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }
         }
     }, [messages, loadingMore]);
 
@@ -128,6 +139,7 @@ export default function ChatPage() {
         const token = localStorage.getItem('access_token');
 
         try {
+            // Fetch recipient public key
             const userRes = await fetch(`https://whisperbox.koyeb.app/users/${userId}/public-key`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -146,13 +158,16 @@ export default function ChatPage() {
 
             const recipientPubKey = await importKey(recipientData.public_key);
             const myPubKey = await importKey(user.public_key);
+
+            // Encrypt
             const payload = await encryptMessage(newMessage, recipientPubKey, myPubKey);
 
             if (sendMessage) {
                 sendMessage(userId as string, payload);
 
+                // Optimistic UI update
                 const optimisticMsg = {
-                    id: Date.now(), // Temporary ID for optimistic UI
+                    id: `temp-${Date.now()}`,
                     sender_id: user.id,
                     receiver_id: userId,
                     payload: payload,
@@ -167,7 +182,12 @@ export default function ChatPage() {
         }
     };
 
-    if (loading) return <div className="p-10 text-slate-500 animate-pulse">Opening secure channel...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center h-full space-y-4">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-500 text-sm font-medium">Establishing end-to-end encryption...</p>
+        </div>
+    );
 
     return (
         <div className="flex flex-col h-[calc(100vh-180px)]">
@@ -175,11 +195,11 @@ export default function ChatPage() {
                 ref={containerRef}
                 className="flex-1 overflow-y-auto pr-4 custom-scrollbar"
             >
-                <ol className="flex flex-col" role="list">
-                    <div ref={topObserverRef} className="h-10 flex items-center justify-center">
-                        {loadingMore && <span className="text-[10px] text-slate-500 animate-pulse">Loading history...</span>}
-                    </div>
+                <div ref={topObserverRef} className="h-10 flex items-center justify-center">
+                    {loadingMore && <span className="text-[10px] text-slate-500 animate-pulse">Syncing older messages...</span>}
+                </div>
 
+                <ol className="flex flex-col" role="list">
                     {messages.map((msg) => (
                         <MessageBubble
                             key={msg.id}
@@ -192,19 +212,22 @@ export default function ChatPage() {
                 </ol>
             </div>
 
-            <form onSubmit={handleSend} className="mt-6 flex gap-4 bg-[#1e293b] p-4 rounded-[28px] border border-white/5">
+            <form onSubmit={handleSend} className="mt-6 flex gap-4 bg-[#1e293b] p-4 rounded-[28px] border border-white/5 shadow-xl">
                 <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={isConnected ? "Type a secure message..." : "Connecting..."}
+                    placeholder={isConnected ? "Type a secure message..." : "Reconnecting to vault..."}
                     disabled={!isConnected}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm placeholder:text-slate-500 px-4"
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm placeholder:text-slate-500 px-4 text-white"
                 />
                 <button
                     type="submit"
-                    disabled={!isConnected}
-                    className={`${isConnected ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-700 cursor-not-allowed'} text-white px-6 py-2 rounded-xl font-bold transition-all active:scale-95`}
+                    disabled={!isConnected || !newMessage.trim()}
+                    className={`${isConnected && newMessage.trim()
+                            ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20'
+                            : 'bg-slate-700 cursor-not-allowed'
+                        } text-white px-6 py-2 rounded-xl font-bold transition-all active:scale-95 shadow-lg`}
                 >
                     {isConnected ? 'Send' : '...'}
                 </button>
