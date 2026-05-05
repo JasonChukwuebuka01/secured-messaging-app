@@ -41,7 +41,7 @@ export default function LoginForm() {
             const { wrapped_private_key, pbkdf2_salt } = user;
 
             // 2. CONVERT DATA
-            const toUint8Array = (base64: string) => 
+            const toUint8Array = (base64: string) =>
                 Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 
             const saltBytes = toUint8Array(pbkdf2_salt);
@@ -58,13 +58,16 @@ export default function LoginForm() {
             localStorage.setItem('access_token', access_token);
             await saveVault(wrappedBytes.buffer as ArrayBuffer, saltBytes);
 
+            // Temporarily hold this in memory for the Dashboard to pick up
+            (window as any).tempWrappingKey = wrappingKey;
+
             setShowSuccess(true);
             setTimeout(() => router.push('/dashboard'), 2000);
 
         } catch (err: any) {
             // Detailed error differentiation
-            const msg = err.name === 'InvalidAccessError' 
-                ? "Algorithm Mismatch in keys.ts" 
+            const msg = err.name === 'InvalidAccessError'
+                ? "Algorithm Mismatch in keys.ts"
                 : err.message;
             setError(msg);
 
@@ -113,9 +116,8 @@ export default function LoginForm() {
                     <button
                         type="submit"
                         disabled={loading || showSuccess}
-                        className={`w-full font-bold py-4 rounded-xl transition-all mt-4 flex justify-center items-center gap-2 ${
-                            showSuccess ? 'bg-[#10b981]' : 'bg-[#2481cc] hover:bg-[#288fde]'
-                        } text-white disabled:opacity-50`}
+                        className={`w-full font-bold py-4 rounded-xl transition-all mt-4 flex justify-center items-center gap-2 ${showSuccess ? 'bg-[#10b981]' : 'bg-[#2481cc] hover:bg-[#288fde]'
+                            } text-white disabled:opacity-50`}
                     >
                         {loading ? 'Decrypting...' : showSuccess ? 'Vault Unlocked' : 'Unlock Vault'}
                     </button>
@@ -124,8 +126,8 @@ export default function LoginForm() {
                 <footer className="mt-8 pt-6 border-t border-white/5 text-center">
                     <p className="text-sm text-slate-500">
                         Need an account?{' '}
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={() => router.push('/register')}
                             className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
                         >
